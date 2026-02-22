@@ -5,8 +5,8 @@ import { Colors } from '@/constants/theme';
 import { useApp } from '@/store/AppContext';
 
 export default function SplashScreen() {
-  const { user } = useApp();
-  const [isReady, setIsReady] = useState(false);
+  const { user, authInitialized } = useApp();
+  const [animationDone, setAnimationDone] = useState(false);
   const fadeAnim = useState(new Animated.Value(0))[0];
   const scaleAnim = useState(new Animated.Value(0.8))[0];
 
@@ -26,11 +26,14 @@ export default function SplashScreen() {
     ]).start();
 
     const timer = setTimeout(() => {
-      setIsReady(true);
+      setAnimationDone(true);
     }, 2500);
 
     return () => clearTimeout(timer);
   }, [fadeAnim, scaleAnim]);
+
+  // Wait for both the splash animation and Firebase auth to initialize
+  const isReady = animationDone && authInitialized;
 
   if (isReady) {
     if (user) {

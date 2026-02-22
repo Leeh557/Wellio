@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +20,7 @@ import { useApp } from '@/store/AppContext';
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { login } = useApp();
+  const { login, register, isLoading } = useApp();
 
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -39,8 +40,8 @@ export default function LoginScreen() {
 
     if (!password.trim()) {
       newErrors.password = 'Password is required';
-    } else if (password.length < 4) {
-      newErrors.password = 'Password must be at least 4 characters';
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
 
     if (!isLogin && !name.trim()) {
@@ -51,20 +52,50 @@ export default function LoginScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) return;
 
-    const success = login(email, password);
-    if (success) {
-      const trimmedEmail = email.trim().toLowerCase();
-      if (trimmedEmail === 'admin@test.com') {
+    let result: { success: boolean; error?: string; role?: string };
+
+    if (isLogin) {
+      result = await login(email, password);
+    } else {
+      result = await register(email, password, name);
+    }
+
+    if (result.success) {
+      if (result.role === 'admin') {
         router.replace('/(admin)');
       } else {
         router.replace('/(user)');
       }
     } else {
-      Alert.alert('Error', 'Login failed. Please try again.');
+      Alert.alert('Error', result.error ?? 'Something went wrong. Please try again.');
     }
+  };
+
+  const handleForgotPassword = () => {
+    if (!email.trim()) {
+      Alert.alert('Reset Password', 'Please enter your email address first, then tap "Forgot Password".');
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(email.trim())) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+    // Import resetPassword from services/auth for direct use
+    import('@/services/auth').then(({ resetPassword }) => {
+      resetPassword(email.trim())
+        .then(() => {
+          Alert.alert(
+            'Password Reset',
+            'A password reset email has been sent. Please check your inbox.'
+          );
+        })
+        .catch(() => {
+          Alert.alert('Error', 'Failed to send reset email. Please try again.');
+        });
+    });
   };
 
   return (
@@ -160,9 +191,26 @@ export default function LoginScreen() {
             {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
           </View>
 
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} activeOpacity={0.8}>
-            <Text style={styles.submitButtonText}>{isLogin ? 'Sign In' : 'Create Account'}</Text>
-            <Ionicons name="arrow-forward" size={20} color={Colors.surface} />
+          {isLogin && (
+            <TouchableOpacity style={styles.forgotButton} onPress={handleForgotPassword}>
+              <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
+            onPress={handleSubmit}
+            activeOpacity={0.8}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color={Colors.surface} />
+            ) : (
+              <>
+                <Text style={styles.submitButtonText}>{isLogin ? 'Sign In' : 'Create Account'}</Text>
+                <Ionicons name="arrow-forward" size={20} color={Colors.surface} />
+              </>
+            )}
           </TouchableOpacity>
 
           <View style={styles.divider}>
@@ -189,8 +237,8 @@ export default function LoginScreen() {
         <View style={styles.hintContainer}>
           <Ionicons name="information-circle-outline" size={16} color={Colors.textLight} />
           <Text style={styles.hintText}>
-            Use <Text style={styles.hintBold}>admin@test.com</Text> for Admin or{' '}
-            <Text style={styles.hintBold}>user@test.com</Text> for Patient
+            Register with <Text style={styles.hintBold}>admin@test.com</Text> for Admin access
+            {'\n'}or any other email for Patient access
           </Text>
         </View>
       </ScrollView>
@@ -298,6 +346,15 @@ const styles = StyleSheet.create({
     color: Colors.error,
     marginTop: 4,
   },
+  forgotButton: {
+    alignSelf: 'flex-end',
+    marginBottom: Spacing.sm,
+  },
+  forgotText: {
+    ...Typography.caption,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -312,6 +369,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
   submitButtonText: {
     ...Typography.bodyBold,

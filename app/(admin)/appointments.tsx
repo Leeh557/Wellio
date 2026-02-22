@@ -5,6 +5,7 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -156,8 +157,20 @@ export default function AppointmentModeration() {
             <AppointmentModerateCard
               appointment={item}
               doctorName={doctor?.name || 'Unknown Doctor'}
-              onApprove={() => updateAppointmentStatus(item.id, 'Approved')}
-              onReject={() => updateAppointmentStatus(item.id, 'Rejected')}
+              onApprove={async () => {
+                try {
+                  await updateAppointmentStatus(item.id, 'Approved');
+                } catch (error) {
+                  Alert.alert('Error', 'Failed to approve appointment.');
+                }
+              }}
+              onReject={async () => {
+                try {
+                  await updateAppointmentStatus(item.id, 'Rejected');
+                } catch (error) {
+                  Alert.alert('Error', 'Failed to reject appointment.');
+                }
+              }}
             />
           );
         }}

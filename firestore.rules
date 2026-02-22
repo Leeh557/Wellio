@@ -1,0 +1,104 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper Functions ───────────────────────────────────────────
+
+    // Check if the request is from an authenticated user
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if the authenticated user is the document owner (by UID)
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // Check if the authenticated user has the 'admin' role
+    function isAdmin() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ─── Users Collection ───────────────────────────────────────────
+    // Document ID = Firebase Auth UID
+    // Fields: uid, email, name, role, phone, photoURL, createdAt, updatedAt
+    match /users/{userId} {
+
+      // Anyone authenticated can read their own profile
+      // Admins can read any user profile
+      allow read: if isOwner(userId) || isAdmin();
+
+      // A user can create their own profile document during registration
+      // The role field must be either 'user' or 'admin'
+      // The uid field must match the document ID and the auth UID
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.email is string
+        && request.resource.data.name is string
+        && request.resource.data.role in ['user', 'admin'];
+
+      // Users can update their own profile (name, email, phone, photoURL)
+      // but CANNOT change their own role
+      // Admins can update any user profile including role
+      allow update: if (isOwner(userId) && !('role' in request.resource.data && request.resource.data.role != resource.data.role))
+        || isAdmin();
+
+      // Only admins can delete user profiles
+      allow delete: if isAdmin();
+    }
+
+    // ─── Doctors Collection ─────────────────────────────────────────
+    // Document ID = auto-generated
+    // Fields: name, specialty, image, bio, experience, rating, patients,
+    //         location, available, createdAt, updatedAt
+    match /doctors/{doctorId} {
+
+      // Any authenticated user can read the doctors list
+      allow read: if isAuthenticated();
+
+      // Only admins can create, update, or delete doctors
+      allow create: if isAdmin()
+        && request.resource.data.name is string
+        && request.resource.data.specialty is string;
+
+      allow update: if isAdmin();
+
+      allow delete: if isAdmin();
+    }
+
+    // ─── Appointments Collection (future) ───────────────────────────
+    // Document ID = auto-generated
+    // Fields: doctorId, patientName, patientEmail, patientPhone,
+    //         date, time, status, notes, createdAt
+    match /appointments/{appointmentId} {
+
+      // Users can read their own appointments
+      // Admins can read all appointments
+      allow read: if isAuthenticated()
+        && (resource.data.patientEmail == request.auth.token.email || isAdmin());
+
+      // Authenticated users can create appointments (book for themselves)
+      allow create: if isAuthenticated()
+        && request.resource.data.patientEmail == request.auth.token.email
+        && request.resource.data.status == 'Pending';
+
+      // Admins can update appointment status (approve/reject)
+      // Users can only update their own appointments' notes
+      allow update: if isAdmin()
+        || (isAuthenticated()
+            && resource.data.patientEmail == request.auth.token.email
+            && !('status' in request.resource.data && request.resource.data.status != resource.data.status));
+
+      // Only admins can delete appointments
+      allow delete: if isAdmin();
+    }
+
+    // ─── Deny all other access by default ───────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

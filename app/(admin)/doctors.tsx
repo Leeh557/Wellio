@@ -69,7 +69,13 @@ export default function DoctorManagement() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => deleteDoctor(doctor.id),
+          onPress: async () => {
+            try {
+              await deleteDoctor(doctor.id);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete doctor. Please try again.');
+            }
+          },
         },
       ]
     );

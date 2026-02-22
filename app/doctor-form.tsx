@@ -9,12 +9,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { useApp } from '@/store/AppContext';
+import { showImagePickerOptions, type UploadResult } from '@/services/imageUpload';
 
 const defaultImages = [
   'https://randomuser.me/api/portraits/men/1.jpg',
@@ -40,6 +43,7 @@ export default function DoctorFormScreen() {
   const [experience, setExperience] = useState('');
   const [location, setLocation] = useState('');
   const [image, setImage] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -65,39 +69,59 @@ export default function DoctorFormScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleImageUpload = () => {
+    showImagePickerOptions(
+      () => setIsUploading(true),
+      (result: UploadResult) => {
+        setImage(result.url);
+        setIsUploading(false);
+      },
+      (error: Error) => {
+        setIsUploading(false);
+        if (error.message !== 'Image selection cancelled' && error.message !== 'Photo capture cancelled') {
+          Alert.alert('Upload Failed', 'Failed to upload image. Please try again.');
+        }
+      }
+    );
+  };
+
+  const handleSubmit = async () => {
     if (!validate()) return;
 
     const doctorImage = image.trim() || defaultImages[Math.floor(Math.random() * defaultImages.length)];
 
-    if (isEdit && existingDoctor) {
-      updateDoctor({
-        ...existingDoctor,
-        name: name.trim(),
-        specialty: specialty.trim(),
-        bio: bio.trim(),
-        experience: Number(experience),
-        location: location.trim(),
-        image: doctorImage,
-      });
-      Alert.alert('Success', 'Doctor updated successfully!', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
-    } else {
-      addDoctor({
-        name: name.trim(),
-        specialty: specialty.trim(),
-        bio: bio.trim(),
-        experience: Number(experience),
-        location: location.trim(),
-        image: doctorImage,
-        rating: 4.5,
-        patients: 0,
-        available: true,
-      });
-      Alert.alert('Success', 'Doctor added successfully!', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+    try {
+      if (isEdit && existingDoctor) {
+        await updateDoctor({
+          ...existingDoctor,
+          name: name.trim(),
+          specialty: specialty.trim(),
+          bio: bio.trim(),
+          experience: Number(experience),
+          location: location.trim(),
+          image: doctorImage,
+        });
+        Alert.alert('Success', 'Doctor updated successfully!', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      } else {
+        await addDoctor({
+          name: name.trim(),
+          specialty: specialty.trim(),
+          bio: bio.trim(),
+          experience: Number(experience),
+          location: location.trim(),
+          image: doctorImage,
+          rating: 4.5,
+          patients: 0,
+          available: true,
+        });
+        Alert.alert('Success', 'Doctor added successfully!', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save doctor. Please try again.');
     }
   };
 
@@ -175,13 +199,33 @@ export default function DoctorFormScreen() {
           <View style={{ width: 40 }} />
         </View>
 
-        {/* Icon */}
-        <View style={styles.iconSection}>
-          <View style={styles.formIcon}>
-            <Ionicons name={isEdit ? 'create' : 'person-add'} size={32} color={Colors.primary} />
-          </View>
-          <Text style={styles.iconLabel}>
-            {isEdit ? 'Update doctor details' : 'Fill in the doctor\'s information'}
+        {/* Photo Upload Section */}
+        <View style={styles.photoSection}>
+          <TouchableOpacity
+            style={styles.photoContainer}
+            onPress={handleImageUpload}
+            disabled={isUploading}
+            activeOpacity={0.7}
+          >
+            {isUploading ? (
+              <View style={styles.photoPlaceholder}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={styles.photoUploadingText}>Uploading...</Text>
+              </View>
+            ) : image ? (
+              <Image source={{ uri: image }} style={styles.photoImage} contentFit="cover" />
+            ) : (
+              <View style={styles.photoPlaceholder}>
+                <Ionicons name="camera-outline" size={36} color={Colors.primary} />
+                <Text style={styles.photoPlaceholderText}>Add Photo</Text>
+              </View>
+            )}
+            <View style={styles.photoBadge}>
+              <Ionicons name="camera" size={14} color={Colors.surface} />
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.photoHint}>
+            {image ? 'Tap to change photo' : 'Tap to upload a profile photo'}
           </Text>
         </View>
 
@@ -209,15 +253,17 @@ export default function DoctorFormScreen() {
             multiline: true,
             error: errors.bio,
           })}
-          {renderInput('Image URL', image, setImage, 'image-outline', {
-            placeholder: 'Optional - leave blank for default',
-          })}
         </View>
       </ScrollView>
 
       {/* Fixed Submit Button */}
       <View style={[styles.submitContainer, { paddingBottom: insets.bottom + Spacing.md }]}>
-        <TouchableOpacity style={styles.submitButton} activeOpacity={0.8} onPress={handleSubmit}>
+        <TouchableOpacity
+          style={[styles.submitButton, isUploading && styles.submitButtonDisabled]}
+          activeOpacity={0.8}
+          onPress={handleSubmit}
+          disabled={isUploading}
+        >
           <Ionicons name={isEdit ? 'save' : 'add-circle'} size={22} color={Colors.surface} />
           <Text style={styles.submitButtonText}>
             {isEdit ? 'Update Doctor' : 'Add Doctor'}
@@ -255,22 +301,58 @@ const styles = StyleSheet.create({
     ...Typography.h3,
     color: Colors.text,
   },
-  iconSection: {
+  photoSection: {
     alignItems: 'center',
     marginBottom: Spacing.lg,
   },
-  formIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  photoContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: Colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: Colors.primary,
   },
-  iconLabel: {
-    ...Typography.body,
-    color: Colors.textSecondary,
+  photoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  photoPlaceholderText: {
+    ...Typography.caption,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  photoUploadingText: {
+    ...Typography.caption,
+    color: Colors.primary,
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  photoBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.surface,
+  },
+  photoHint: {
+    ...Typography.caption,
+    color: Colors.textLight,
+    marginTop: Spacing.sm,
   },
   formSection: {
     marginBottom: Spacing.lg,
@@ -343,6 +425,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
   submitButtonText: {
     fontSize: 17,

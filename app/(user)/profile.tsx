@@ -10,12 +10,16 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { useApp } from '@/store/AppContext';
+import { showImagePickerOptions, type UploadResult } from '@/services/imageUpload';
+import { updateUserProfile } from '@/services/userService';
 
 interface MenuItemProps {
   icon: string;
@@ -44,12 +48,14 @@ function MenuItem({ icon, iconColor, iconBg, label, subtitle, onPress }: MenuIte
 export default function UserProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, logout, updateUser } = useApp();
+  const { user, firebaseUser, logout, updateUser } = useApp();
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(user?.name || '');
   const [editEmail, setEditEmail] = useState(user?.email || '');
   const [editErrors, setEditErrors] = useState<{ name?: string; email?: string }>({});
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const getInitials = useCallback((name: string) => {
     return name
@@ -69,12 +75,36 @@ export default function UserProfileScreen() {
         {
           text: 'Sign Out',
           style: 'destructive',
-          onPress: () => {
-            logout();
+          onPress: async () => {
+            await logout();
             router.replace('/login');
           },
         },
       ]
+    );
+  };
+
+  const handlePhotoUpload = () => {
+    showImagePickerOptions(
+      () => setIsUploadingPhoto(true),
+      async (result: UploadResult) => {
+        setProfileImage(result.url);
+        setIsUploadingPhoto(false);
+        // Save to Firestore
+        if (firebaseUser) {
+          try {
+            await updateUserProfile(firebaseUser.uid, { photoURL: result.url });
+          } catch (error) {
+            console.error('Failed to save profile photo:', error);
+          }
+        }
+      },
+      (error: Error) => {
+        setIsUploadingPhoto(false);
+        if (error.message !== 'Image selection cancelled' && error.message !== 'Photo capture cancelled') {
+          Alert.alert('Upload Failed', 'Failed to upload photo. Please try again.');
+        }
+      }
     );
   };
 
@@ -129,12 +159,25 @@ export default function UserProfileScreen() {
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {user ? getInitials(user.name) : '?'}
-              </Text>
-            </View>
-            <View style={styles.onlineBadge} />
+            <TouchableOpacity
+              style={styles.avatar}
+              onPress={handlePhotoUpload}
+              disabled={isUploadingPhoto}
+              activeOpacity={0.7}
+            >
+              {isUploadingPhoto ? (
+                <ActivityIndicator size="large" color={Colors.surface} />
+              ) : profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.avatarImage} contentFit="cover" />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {user ? getInitials(user.name) : '?'}
+                </Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cameraBadge} onPress={handlePhotoUpload} disabled={isUploadingPhoto}>
+              <Ionicons name="camera" size={12} color={Colors.surface} />
+            </TouchableOpacity>
           </View>
           <Text style={styles.profileName}>{user?.name || 'Patient'}</Text>
           <Text style={styles.profileEmail}>{user?.email || ''}</Text>
@@ -233,9 +276,13 @@ export default function UserProfileScreen() {
             {/* Avatar Preview */}
             <View style={styles.modalAvatarSection}>
               <View style={styles.modalAvatar}>
-                <Text style={styles.modalAvatarText}>
-                  {editName ? getInitials(editName) : '?'}
-                </Text>
+                {profileImage ? (
+                  <Image source={{ uri: profileImage }} style={styles.modalAvatarImage} contentFit="cover" />
+                ) : (
+                  <Text style={styles.modalAvatarText}>
+                    {editName ? getInitials(editName) : '?'}
+                  </Text>
+                )}
               </View>
             </View>
 
@@ -330,11 +377,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 6,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     fontSize: 32,
@@ -342,15 +394,17 @@ const styles = StyleSheet.create({
     color: Colors.surface,
     letterSpacing: 1,
   },
-  onlineBadge: {
+  cameraBadge: {
     position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: Colors.success,
-    borderWidth: 3,
+    bottom: 2,
+    right: 2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
     borderColor: Colors.surface,
   },
   profileName: {
@@ -494,6 +548,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  modalAvatarImage: {
+    width: '100%',
+    height: '100%',
   },
   modalAvatarText: {
     fontSize: 28,

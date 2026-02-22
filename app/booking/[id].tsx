@@ -80,34 +80,38 @@ export default function BookingScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleBooking = () => {
+  const handleBooking = async () => {
     if (!validate()) return;
 
-    addAppointment({
-      doctorId: doctor.id,
-      patientName: patientName.trim(),
-      patientEmail: user?.email || '',
-      patientPhone: patientPhone.trim(),
-      date: date.toISOString().split('T')[0],
-      time: formatTime(date),
-      status: 'Pending',
-      notes: notes.trim(),
-    });
+    try {
+      await addAppointment({
+        doctorId: doctor.id,
+        patientName: patientName.trim(),
+        patientEmail: user?.email || '',
+        patientPhone: patientPhone.trim(),
+        date: date.toISOString().split('T')[0],
+        time: formatTime(date),
+        status: 'Pending',
+        notes: notes.trim(),
+      });
 
-    Alert.alert(
-      'Booking Confirmed! 🎉',
-      `Your appointment with ${doctor.name} has been booked for ${formatDate(date)}. Status: Pending approval.`,
-      [
-        {
-          text: 'View My Bookings',
-          onPress: () => router.replace('/(user)/appointments'),
-        },
-        {
-          text: 'OK',
-          onPress: () => router.back(),
-        },
-      ]
-    );
+      Alert.alert(
+        'Booking Confirmed! 🎉',
+        `Your appointment with ${doctor.name} has been booked for ${formatDate(date)}. Status: Pending approval.`,
+        [
+          {
+            text: 'View My Bookings',
+            onPress: () => router.replace('/(user)/appointments'),
+          },
+          {
+            text: 'OK',
+            onPress: () => router.back(),
+          },
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to book appointment. Please try again.');
+    }
   };
 
   return (
