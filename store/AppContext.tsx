@@ -19,6 +19,7 @@ type AppAction =
   | { type: 'LOGIN'; payload: User }
   | { type: 'LOGOUT' }
   | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'UPDATE_USER'; payload: { name: string; email: string } }
   | { type: 'ADD_DOCTOR'; payload: Doctor }
   | { type: 'UPDATE_DOCTOR'; payload: Doctor }
   | { type: 'DELETE_DOCTOR'; payload: string }
@@ -28,6 +29,7 @@ type AppAction =
 interface AppContextType extends AppState {
   login: (email: string, password: string) => boolean;
   logout: () => void;
+  updateUser: (name: string, email: string) => void;
   addDoctor: (doctor: Omit<Doctor, 'id'>) => void;
   updateDoctor: (doctor: Doctor) => void;
   deleteDoctor: (id: string) => void;
@@ -51,6 +53,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, user: action.payload };
     case 'LOGOUT':
       return { ...state, user: null };
+    case 'UPDATE_USER':
+      return {
+        ...state,
+        user: state.user
+          ? { ...state.user, name: action.payload.name, email: action.payload.email }
+          : null,
+      };
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     case 'ADD_DOCTOR':
@@ -120,6 +129,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'LOGOUT' });
   }, []);
 
+  const updateUser = useCallback((name: string, email: string) => {
+    dispatch({ type: 'UPDATE_USER', payload: { name, email } });
+  }, []);
+
   const addDoctor = useCallback((doctor: Omit<Doctor, 'id'>) => {
     const newDoctor: Doctor = {
       ...doctor,
@@ -180,6 +193,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...state,
         login,
         logout,
+        updateUser,
         addDoctor,
         updateDoctor,
         deleteDoctor,

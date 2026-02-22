@@ -61,7 +61,7 @@ function RecentItem({ title, subtitle, time, status, statusColor, statusBg }: Re
 export default function AdminDashboard() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { doctors, appointments, logout } = useApp();
+  const { doctors, appointments } = useApp();
 
   const stats = useMemo(() => {
     const pending = appointments.filter((a) => a.status === 'Pending').length;
@@ -88,11 +88,6 @@ export default function AdminDashboard() {
     Rejected: { color: Colors.error, bg: Colors.errorLight },
   };
 
-  const handleLogout = () => {
-    logout();
-    router.replace('/login');
-  };
-
   return (
     <ScrollView
       style={[styles.container, { paddingTop: insets.top }]}
@@ -105,9 +100,9 @@ export default function AdminDashboard() {
           <Text style={styles.headerLabel}>Admin Panel</Text>
           <Text style={styles.headerTitle}>Dashboard</Text>
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={22} color={Colors.error} />
-        </TouchableOpacity>
+        <View style={styles.headerBadge}>
+          <Ionicons name="shield-checkmark" size={20} color={Colors.primary} />
+        </View>
       </View>
 
       {/* Stats Cards */}
@@ -249,11 +244,11 @@ const styles = StyleSheet.create({
     ...Typography.h1,
     color: Colors.text,
   },
-  logoutButton: {
+  headerBadge: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.errorLight,
+    backgroundColor: Colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
