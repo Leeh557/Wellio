@@ -211,13 +211,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, []);
 
-  // Subscribe to real-time doctor list from Firestore
+  // Subscribe to real-time doctor list from Firestore (only when authenticated)
   useEffect(() => {
+    if (!state.user || !state.authInitialized) return;
+
     const unsubscribe = subscribeToDoctors((doctors) => {
       dispatch({ type: 'SET_DOCTORS', payload: doctors });
     });
     return unsubscribe;
-  }, []);
+  }, [state.user?.email, state.authInitialized]);
 
   // Subscribe to real-time appointments from Firestore
   // Admin sees all appointments; users see only their own

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { useApp } from '@/store/AppContext';
 import { showImagePickerOptions, type UploadResult } from '@/services/imageUpload';
-import { updateUserProfile } from '@/services/userService';
+import { updateUserProfile, getUserProfile } from '@/services/userService';
 
 interface MenuItemProps {
   icon: string;
@@ -56,6 +56,17 @@ export default function UserProfileScreen() {
   const [editErrors, setEditErrors] = useState<{ name?: string; email?: string }>({});
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  // Load profile photo from Firestore on mount
+  useEffect(() => {
+    if (firebaseUser) {
+      getUserProfile(firebaseUser.uid).then((profile) => {
+        if (profile?.photoURL) {
+          setProfileImage(profile.photoURL);
+        }
+      }).catch(() => {});
+    }
+  }, [firebaseUser]);
 
   const getInitials = useCallback((name: string) => {
     return name
@@ -198,39 +209,6 @@ export default function UserProfileScreen() {
               label="Edit Personal Info"
               subtitle="Update your name and email"
               onPress={() => handleMenuPress('edit')}
-            />
-            <View style={styles.menuDivider} />
-            <MenuItem
-              icon="shield-checkmark-outline"
-              iconColor="#6C63FF"
-              iconBg="#EEECFF"
-              label="Account Security"
-              subtitle="Password and login settings"
-              onPress={() => handleMenuPress('Account Security')}
-            />
-          </View>
-        </View>
-
-        {/* Preferences Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-          <View style={styles.menuCard}>
-            <MenuItem
-              icon="notifications-outline"
-              iconColor="#FF9500"
-              iconBg="#FFF3E0"
-              label="Notification Preferences"
-              subtitle="Manage alerts and reminders"
-              onPress={() => handleMenuPress('Notification Preferences')}
-            />
-            <View style={styles.menuDivider} />
-            <MenuItem
-              icon="help-circle-outline"
-              iconColor="#34C759"
-              iconBg="#E8F9EE"
-              label="Help & Support"
-              subtitle="FAQs, contact us, report issues"
-              onPress={() => handleMenuPress('Help & Support')}
             />
           </View>
         </View>

@@ -3,6 +3,10 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  getDocs,
+  collection,
+  query,
+  orderBy,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
@@ -84,4 +88,16 @@ export async function updateUserRole(uid: string, role: UserRole): Promise<void>
     role,
     updatedAt: serverTimestamp(),
   });
+}
+
+/**
+ * Get all registered users (admin only)
+ */
+export async function getAllUsers(): Promise<UserProfile[]> {
+  const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((docSnap) => ({
+    uid: docSnap.id,
+    ...docSnap.data(),
+  })) as UserProfile[];
 }
