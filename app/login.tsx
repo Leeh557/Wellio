@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
@@ -110,10 +111,11 @@ export default function LoginScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <View style={styles.crossH} />
-            <View style={styles.crossV} />
-          </View>
+          <Image
+            source={require('@/assets/images/wellio-icon.png')}
+            style={styles.logoImage}
+            contentFit="contain"
+          />
           <Text style={styles.brandName}>WELLIO</Text>
           <Text style={styles.tagline}>
             {isLogin ? 'Welcome back! Sign in to continue.' : 'Create your account to get started.'}
@@ -261,33 +263,10 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xxl,
     marginBottom: Spacing.xl,
   },
-  logoContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+  logoImage: {
+    width: 80,
+    height: 80,
     marginBottom: Spacing.md,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  crossH: {
-    position: 'absolute',
-    width: 22,
-    height: 7,
-    backgroundColor: Colors.surface,
-    borderRadius: 4,
-  },
-  crossV: {
-    position: 'absolute',
-    width: 7,
-    height: 22,
-    backgroundColor: Colors.surface,
-    borderRadius: 4,
   },
   brandName: {
     fontSize: 28,

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Animated } from 'react-native';
 import { Redirect } from 'expo-router';
+import { Image } from 'expo-image';
 import { Colors } from '@/constants/theme';
 import { useApp } from '@/store/AppContext';
 
@@ -50,10 +51,11 @@ export default function SplashScreen() {
           { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
         ]}
       >
-        <View style={styles.iconContainer}>
-          <View style={styles.crossHorizontal} />
-          <View style={styles.crossVertical} />
-        </View>
+        <Image
+          source={require('@/assets/images/wellio-icon.png')}
+          style={styles.logoImage}
+          contentFit="contain"
+        />
         <Text style={styles.title}>WELLIO</Text>
         <Text style={styles.subtitle}>Your Health, Our Priority</Text>
       </Animated.View>
@@ -75,33 +77,10 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+  logoImage: {
+    width: 120,
+    height: 120,
     marginBottom: 24,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  crossHorizontal: {
-    position: 'absolute',
-    width: 32,
-    height: 10,
-    backgroundColor: Colors.surface,
-    borderRadius: 5,
-  },
-  crossVertical: {
-    position: 'absolute',
-    width: 10,
-    height: 32,
-    backgroundColor: Colors.surface,
-    borderRadius: 5,
   },
   title: {
     fontSize: 40,
