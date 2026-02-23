@@ -238,10 +238,7 @@ export default function LoginScreen() {
         {/* Hint */}
         <View style={styles.hintContainer}>
           <Ionicons name="information-circle-outline" size={16} color={Colors.textLight} />
-          <Text style={styles.hintText}>
-            Register with <Text style={styles.hintBold}>admin@test.com</Text> for Admin access
-            {'\n'}or any other email for Patient access
-          </Text>
+          
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

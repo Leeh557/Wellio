@@ -3,12 +3,12 @@ const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
-// Disable minification for web builds
+// Enable minification for optimized builds
 config.transformer = {
   ...config.transformer,
   minifierConfig: {
-    compress: false,
-    mangle: false,
+    compress: true,
+    mangle: true,
   },
 };
 
